@@ -29,7 +29,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
     console.log('Sending prompt:', prompt);
 
     if (ws.current?.readyState === WebSocket.OPEN) {
-      ws.current.send(JSON.stringify({ prompt }));
+      ws.current?.send(JSON.stringify({ prompt }));
     } else {
       console.error('WebSocket is not open. Current state:', ws.current?.readyState);
       // Optionally implement reconnect logic here
@@ -62,16 +62,16 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
         try {
           const data = JSON.parse(event.data);
           // If data.suggestions is already an array, use it directly
-          if (Array.isArray(data.suggestions)) {
-            setAiSuggestions(data.suggestions);
-            console.log('AI-generated suggestions received:', data.suggestions);
+          if (Array.isArray(data?.suggestions)) {
+            setAiSuggestions(data?.suggestions);
+            console.log('AI-generated suggestions received:', data?.suggestions);
             // Set first suggestion as default in textarea
-            if (data.suggestions.length > 0) {
-              setReplyContent(data.suggestions[0]);
+            if (data?.suggestions?.length > 0) {
+              setReplyContent(data?.suggestions?.[0]);
             }
-          } else if (typeof data.reply === "string") {
+          } else if (typeof data?.reply === "string") {
             // Try to extract array from string between [ and ]
-            const match = data.reply.match(/\[([^\]]*)\]/);
+            const match = data?.reply?.match(/\[([^\]]*)\]/);
             if (match) {
               // Get the content inside the brackets
               const arrayContent = match[1];
@@ -81,14 +81,14 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
                 .map((s: any) => s.replace(/^"|"$/g, '').trim())
                 .filter(Boolean);
               // Remove the first " from the start of the first element if present
-              if (suggestions.length && suggestions[0].startsWith('"')) {
+              if (suggestions?.length && suggestions?.[0]?.startsWith('"')) {
                 suggestions[0] = suggestions[0].substring(1);
               }
               setAiSuggestions(suggestions);
               console.log('Extracted suggestions:', suggestions);
               // Set first suggestion as default in textarea
-              if (suggestions.length > 0) {
-                setReplyContent(suggestions[0]);
+              if (suggestions?.length > 0) {
+                setReplyContent(suggestions?.[0]);
               }
             }
           }
@@ -164,7 +164,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
         id : selectedAccount?._id,
         subject,
         text: replyContent,
-        to : email.from.email,
+        to : email?.from?.email,
       });
       setReplyContent('');
       // alert('Reply sent successfully!');
@@ -185,7 +185,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center">
           <span className="text-sm text-gray-500">
-            To: <span className="text-gray-900">{email.from.email}</span>
+            To: <span className="text-gray-900">{email?.from?.email}</span>
           </span>
         </div>
         <div className="mt-2">
@@ -194,7 +194,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
             className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
             placeholder="Subject"
             value={subject}
-            onChange={(e) => setSubject(e.target.value)}
+            onChange={(e) => setSubject(e?.target?.value)}
           />
         </div>
       </div>
@@ -204,7 +204,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
           className="w-full min-h-[120px] p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
           placeholder="Write your reply..."
           value={replyContent}
-          onChange={(e) => setReplyContent(e.target.value)}
+          onChange={(e) => setReplyContent(e?.target?.value)}
         />
         
         {sendError && (

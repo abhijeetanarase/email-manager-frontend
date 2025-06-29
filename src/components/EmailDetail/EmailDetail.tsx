@@ -144,28 +144,28 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
         <div className="mb-6">
           <div className="flex items-start justify-between">
             <h1 className="text-xl font-semibold text-gray-900">
-              {email.subject}
+              {email?.subject}
             </h1>
             <button className="p-1 text-gray-400 hover:text-yellow-500">
               <Star
                 className={`h-5 w-5 ${
-                  email.starred ? "text-yellow-500 fill-yellow-500" : ""
+                  email?.starred ? "text-yellow-500 fill-yellow-500" : ""
                 }`}
               />
             </button>
           </div>
 
-          {email.category && (
+          {email?.category && (
             <div className="mt-2">
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                   categoryColors[
-                    email.category as keyof typeof categoryColors
+                    email?.category as keyof typeof categoryColors
                   ] || "bg-gray-500"
                 } text-white`}
               >
-                {categoryIcons[email.category as keyof typeof categoryIcons]}
-                <span className="ml-1">{email.category}</span>
+                {categoryIcons[email?.category as keyof typeof categoryIcons]}
+                <span className="ml-1">{email?.category}</span>
               </span>
             </div>
           )}
@@ -174,9 +174,9 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
         <div className="flex items-start mb-6">
           <div className="flex-shrink-0">
             <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center text-gray-600 font-medium">
-              {email.from.name
-                ? email.from.name.charAt(0)
-                : email.from.email.charAt(0)}
+              {email?.from?.name
+                ? email?.from?.name?.charAt(0)
+                : email?.from?.email?.charAt(0)}
             </div>
           </div>
 
@@ -184,34 +184,34 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-medium text-gray-900">
-                  {email.from.name || email.from.email}
+                  {email?.from?.name || email?.from?.email}
                 </h3>
-                <p className="text-xs text-gray-500">{email.from.email}</p>
+                <p className="text-xs text-gray-500">{email?.from?.email}</p>
               </div>
               <div className="text-xs text-gray-500">
-                {formatDate(email.receivedAt)}
+                {formatDate(email?.receivedAt)}
               </div>
             </div>
 
             <div className="mt-1 text-sm text-gray-500">
               <span>To: </span>
               <span className="text-gray-900">
-                {email.to.map((recipient) => recipient.email).join(", ")}
+                {email?.to?.map((recipient) => recipient?.email).join(", ")}
               </span>
             </div>
 
-            {email.hasAttachments && (
+            {email?.hasAttachments && (
               <div className="mt-4 border-t border-gray-200 pt-4">
                 <div className="flex items-center text-sm text-gray-500">
                   <Paperclip className="h-5 w-5 mr-2" />
                   <span>
-                    {email.attachments.length} attachment
-                    {email.attachments.length !== 1 ? "s" : ""}
+                    {email?.attachments?.length} attachment
+                    {email?.attachments?.length !== 1 ? "s" : ""}
                   </span>
                 </div>
 
                 <div className="mt-2 grid grid-cols-2 gap-3">
-                  {email.attachments.map((attachment, index) => {
+                  {email?.attachments?.map((attachment, index) => {
                     // Format size (bytes to KB/MB/GB)
                     const formatSize = (size: number) => {
                       if (size >= 1024 * 1024 * 1024)
@@ -231,18 +231,18 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
                         </div>
                         <div className="ml-3 overflow-hidden flex-1">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {attachment.filename}
+                            {attachment?.filename}
                           </p>
                           <p className="text-xs text-gray-500">
-                            {formatSize(Number(attachment.size))}
+                            {formatSize(Number(attachment?.size))}
                           </p>
                         </div>
                         <div className="flex space-x-2 ml-2">
                           <button
                             onClick={() =>
                               handleDownload(
-                                attachment.url,
-                                attachment.filename
+                                attachment?.url,
+                                attachment?.filename
                               )
                             }
                             className="p-1 text-gray-500 hover:text-blue-500 hover:bg-gray-100 rounded"
@@ -251,7 +251,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
                             <Download size={16} />
                           </button>
                           <button
-                            onClick={() => handleView(attachment.url)}
+                            onClick={() => handleView(attachment?.url)}
                             className="p-1 text-gray-500 hover:text-green-500 hover:bg-gray-100 rounded"
                             title="View"
                           >
@@ -267,7 +267,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
 
             <div className="mt-4 border-t border-gray-200 pt-4">
               <iframe
-                srcDoc={email.body}
+                srcDoc={email?.body}
                 className="w-full h-[500px] border-0"
                 sandbox="allow-same-origin allow-popups allow-forms allow-scripts"
               />
@@ -280,7 +280,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
             className="mt-6 border-t border-gray-200 pt-6"
             ref={replyBoxRef}
           >
-            <EmailReplyBox email={email} showReply = {showReply} />
+            <EmailReplyBox email={email} showReply={showReply} />
           </div>
         )}
       </div>
