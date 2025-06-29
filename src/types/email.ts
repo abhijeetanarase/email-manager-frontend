@@ -31,6 +31,14 @@ export interface Email {
   attachments: EmailAttachment[];
   category: EmailCategory;
   threadId: string;
+  contentType?: string;
+  timeSensitivity?: string;
+  priority?: string;
+  actionRequired?: string;
+  purpose?: string;
+  senderType?: string;
+  topic?: string;
+  topicDepartment? : string;
 }
 
 export interface EmailAccount {

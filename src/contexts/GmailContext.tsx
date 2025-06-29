@@ -22,6 +22,10 @@ interface GmailContextType {
  emails: any[]; // Adjust type as needed
  makeEmailStarred: (starred: boolean, emailId: string) => Promise<void>;
 fetchLast30Days: () => Promise<void>;
+currentPage: number;
+setCurrentPage: (page: number) => void;
+totalPages: number;
+loading: boolean;
 
   
 }
@@ -46,6 +50,10 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
   const [emailCred, setEmailCred] = useState<Account[] | null>([]);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
   const [emails, setEmails] = useState<any[]>([]); // Adjust type as needed
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages , setTotalPages] = useState(0);
+  const [loading, setLoading] = useState(false);
+
   
   const fetchCredentials = async () => {
     try {
@@ -80,11 +88,17 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
     if (!selectedAccount) return;
 
     try {
-      const response = await api.get(`/email/${selectedAccount._id}`);
+    setLoading(true);
+      const response = await api.get(`/email/${selectedAccount._id}?n=20&p=${currentPage}`);
+    
       setEmails(response?.data?.emails);
+      setTotalPages(response?.data?.totalPages || 0);
+      
       // Handle the fetched emails as needed
     } catch (error) {
       console.error("Error fetching emails:", error);
+    }finally {
+   setLoading(false);
     }
   }
 
@@ -118,7 +132,7 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       fetchEmails();
     }
   }
-  , [selectedAccount]);
+  , [selectedAccount , currentPage ]);
   
  
 
@@ -143,7 +157,11 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       handleAddAccount,
       fetchCredentials ,
       makeEmailStarred,
-      fetchLast30Days
+      fetchLast30Days,
+      currentPage,
+      setCurrentPage,
+      totalPages ,
+      loading
     }}>
       {children}
     </GmailContext.Provider>

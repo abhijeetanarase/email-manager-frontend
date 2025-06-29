@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.39.7",
     "axios": "^1.9.0",
     "dotenv": "^16.5.0",
+    "framer-motion": "^12.19.2",
     "imapflow": "^1.0.187",
     "lucide-react": "^0.344.0",
     "nodemailer": "^7.0.3",
