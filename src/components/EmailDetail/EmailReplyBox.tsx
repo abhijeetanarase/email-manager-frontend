@@ -43,8 +43,14 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
       return;
     }
 
+    if (!socketUrl) {
+      console.error('socketUrl is undefined');
+      setSendError('AI service configuration error');
+      return;
+    }
+
     // Ensure proper URL formatting
-    const baseUrl = socketUrl.replace(/\/$/, '');
+    const baseUrl = socketUrl?.replace?.(/\/$/, '') || '';
 
     // Initialize new WebSocket connection only if not already open
     if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
