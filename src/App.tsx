@@ -3,7 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import GoogleLoginPage from "./components/login/GoogleLoginPage";
 import LoginSuccess from "./components/login/LoginSucess";
 import { Toaster } from "react-hot-toast";
-import "./toast.css"
+
 
 // PrivateRoute component
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
