@@ -9,7 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 interface EmailListProps {
   emails: Email[];
-  onEmailSelect: (email: Email) => void;
+  onEmailSelect: (email: Email , type : string) => void;
   selectedEmail: Email | null;
 }
 
@@ -17,8 +17,9 @@ const EmailList: React.FC<EmailListProps> = ({
   onEmailSelect,
   selectedEmail
 }) => {
-  const { emails, fetchLast30Days, currentPage, setCurrentPage, totalPages, loading } = useGmailContext();
+  const { emails, fetchLast30Days, currentPage, setCurrentPage, totalPages, loading , updateEmailStatus } = useGmailContext();
   const [isLoading, setIsLoading] = useState(false);
+
 
   const handleRefresh = async () => {
     setIsLoading(true);
@@ -46,6 +47,18 @@ const EmailList: React.FC<EmailListProps> = ({
 
   const handleLastPage = () => {
     setCurrentPage(totalPages);
+  };
+
+  const handleStarClick = async(e: React.MouseEvent , email : Email) => {
+    e.stopPropagation();
+    if (email.starred) {
+      // If already starred, unstar it
+      onEmailSelect(email , "starred");
+      await updateEmailStatus('unstarred', email._id);
+      return;
+    }
+     onEmailSelect(email , "starred");
+    await updateEmailStatus( 'starred' ,email._id);
   };
 
   if (loading) {
@@ -186,7 +199,8 @@ const EmailList: React.FC<EmailListProps> = ({
                     <EmailListItem 
                       email={email}
                       isSelected={selectedEmail?._id === email._id}
-                      onClick={() => onEmailSelect(email)}
+                      onClick={() => {onEmailSelect(email , "selection"); updateEmailStatus("read" ,email._id )}}
+                      onEmailAction={() => {}} // Add this line or provide your handler
                     />
                   </motion.li>
                 ))}

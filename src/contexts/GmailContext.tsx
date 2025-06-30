@@ -20,12 +20,13 @@ interface GmailContextType {
   ) => Promise<void>;
   fetchCredentials: () => Promise<void>;
  emails: any[]; // Adjust type as needed
- makeEmailStarred: (starred: boolean, emailId: string) => Promise<void>;
+ updateEmailStatus: (type : string, emailId: string) => Promise<void>;
 fetchLast30Days: () => Promise<void>;
 currentPage: number;
 setCurrentPage: (page: number) => void;
 totalPages: number;
 loading: boolean;
+  setEmails: (emails: any[]) => void;
 
   
 }
@@ -57,6 +58,7 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
   
   const fetchCredentials = async () => {
     try {
+      setLoading(true);
       await api.get("/emailcred").then((res) => {
         if (res.data && res.data.cred) {
           setEmailCred(res.data.cred);
@@ -64,6 +66,8 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       });
     } catch (error) {
       console.log("Error fetching email credentials:", error);
+    }finally{
+      setLoading(false);
     }
   };
 
@@ -102,12 +106,11 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
     }
   }
 
-  const makeEmailStarred = async(starred : Boolean , emailId : string)=>{
+  const updateEmailStatus = async(type :string  , emailId : string)=>{
     if (!selectedAccount) return;
 
     try {
-       await api.patch(`/email/starred/${emailId}`, { starred });
-       fetchEmails(); // Refresh emails after updating starred status
+       await api.patch(`/email/status/${emailId}`, { type : type });
     } catch (error) {
       console.error("Error updating starred status:", error);
     }
@@ -156,12 +159,13 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       selectedAccount,
       handleAddAccount,
       fetchCredentials ,
-      makeEmailStarred,
+      updateEmailStatus,
       fetchLast30Days,
       currentPage,
       setCurrentPage,
       totalPages ,
-      loading
+      loading,
+      setEmails
     }}>
       {children}
     </GmailContext.Provider>

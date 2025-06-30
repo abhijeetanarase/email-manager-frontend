@@ -7,16 +7,30 @@ import { Email } from '../types/email';
 import { useGmailContext } from '../contexts/GmailContext';
 
 function Box() {
-  const {emails} = useGmailContext();
+  const {emails , setEmails} = useGmailContext();
   const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
   // const [emails] = useState<Email[]>(mockEmails);
   const [isMobileDetailView, setIsMobileDetailView] = useState(false);
 
-  const handleEmailSelect = (email: Email) => {
-    setSelectedEmail(email);
-    
-    // Mark as read when selected
-    email.read = true;
+  const handleEmailSelect = (email: Email , type : string ) => {
+   
+
+    if (type === "selection") {
+       setSelectedEmail(email);
+      // If email is selected from the list, mark it as read
+      email.read = true;
+      
+    }
+
+    if (type === "starred") {
+  const updatedEmails = emails.map(e =>
+    e._id === email._id ? { ...e, starred: !e.starred } : e
+  );
+
+  setEmails(updatedEmails); // Assuming useState for emails
+}
+
+
     
     // On mobile, show the detail view
     if (window.innerWidth < 1024) {

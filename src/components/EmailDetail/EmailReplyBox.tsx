@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, Plus, Paperclip, Smile, Bot } from 'lucide-react';
+import { Send, Bot } from 'lucide-react';
 import { Email } from '../../types/email';
 import { socketUrl } from '../../utils/constants';
 import api from '../../utils/api';
@@ -17,8 +17,7 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
   const [isSending, setIsSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [prompt, setPrompt] = useState<string>(`Suggest me the replies for this body: ${email.body} all relpis should be in one array and each reply should be in double quotes and separated by comma don't add numbering make sure reply format is like this Eg. ["hello abhi , thank you", "reply2", "reply3"]`);
-  const [reply, setReply] = useState<string>('');
-  const [token, setToken] = useState<string | null>(localStorage.getItem('authToken'));
+  const token:string | null = localStorage.getItem('authToken')
   const [subject, setSubject] = useState<string>(`Re: ${email.subject || ""}`);
   const ws = useRef<WebSocket | null>(null);
   const {selectedAccount} = useGmailContext();
@@ -144,13 +143,11 @@ const EmailReplyBox: React.FC<EmailReplyBoxProps> = ({ email , showReply}) => {
       setReplyContent('');
       setIsLoadingSuggestions(false);
       setSendError(null);
-      setReply('');
     }
     else{
       setReplyContent('');
       setIsLoadingSuggestions(true);
       setSendError(null);
-      setReply('');
       setPrompt(`Suggest me the replies for this body: ${email.body} all relpis should be in one array and each reply should be in double quotes and separated by comma don't add numbering make sure reply format is like this Eg. ["hello abhi , thank you", "reply2", "reply3"]`);
     }
   

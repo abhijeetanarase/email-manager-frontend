@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { Search, Bell, Menu, X } from 'lucide-react';
+import { Search, Bell, Menu, X, ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import api from '../../utils/api';
-import { useGmailContext } from '../../contexts/GmailContext';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -13,10 +12,8 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   const [user, setUser] = useState<{ name: string; email: string; picture: string } | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const {fetchLast30Days} = useGmailContext();
 
   useEffect(() => {
-    // Fetch user data or perform any initial setup here
     const fetchUserData = async () => {
       try {
         const response = await api.get('/user/profile');
@@ -27,62 +24,74 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
     };
 
     fetchUserData();
-  },[]); 
+  }, []);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setDropdownOpen(false);
       }
     }
+    
     if (dropdownOpen) {
       document.addEventListener("mousedown", handleClickOutside);
     } else {
       document.removeEventListener("mousedown", handleClickOutside);
     }
+    
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, [dropdownOpen]);
 
+  const handleSignOut = () => {
+    localStorage.removeItem("authToken");
+    window.location.href = "/login";
+  };
+
   return (
-    <header className="bg-white border-b border-gray-200 py-3 px-4 sm:px-6 flex items-center justify-between">
-      <div className="flex items-center">
+    <header className="bg-white border-b border-gray-100 py-3 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
+      <div className="flex items-center space-x-4">
         <button 
-          className="text-gray-500 hover:text-gray-700 lg:hidden" 
+          className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg transition-colors duration-200" 
           onClick={toggleSidebar}
         >
-          {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
+        
+        <div className="hidden md:block text-xl font-semibold text-gray-800">
+          Dashboard
+        </div>
       </div>
       
-      <div className="w-full max-w-xl mx-4">
+      <div className="flex-1 max-w-2xl mx-4">
         <div className="relative">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <Search className="h-5 w-5 text-gray-400" />
+            <Search className="h-4 w-4 text-gray-400" />
           </div>
           <input
             type="text"
-            className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-            placeholder="Search emails..."
+            className="block w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-200 text-sm"
+            placeholder="Search emails, documents, projects..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
       </div>
       
-      <div className="flex items-center">
-        <button className="p-1 rounded-full text-gray-500 hover:text-gray-700 focus:outline-none">
+      <div className="flex items-center space-x-4">
+        <button className="relative p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition-colors duration-200">
           <span className="sr-only">View notifications</span>
-          <Bell className="h-6 w-6" />
+          <Bell className="h-5 w-5" />
+          <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
         </button>
-        <div className="ml-3 relative" ref={dropdownRef}>
-          <div className="flex items-center">
-            <button
-              className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium focus:outline-none"
-              onClick={() => setDropdownOpen((open) => !open)}
-            >
+        
+        <div className="relative" ref={dropdownRef}>
+          <button
+            className="flex items-center space-x-2 focus:outline-none"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+          >
+            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium">
               {user && user.picture ? (
                 <img
                   src={user.picture}
@@ -90,7 +99,6 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                   className="h-8 w-8 rounded-full object-cover"
                 />
               ) : (
-                // Show initials if no picture
                 user
                   ? user.name
                       .split(' ')
@@ -99,41 +107,63 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
                       .toUpperCase()
                   : "JD"
               )}
-            </button>
-          </div>
-          {(dropdownOpen && (user || localStorage.getItem("authToken"))) && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg py-2 z-50">
+            </div>
+            <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${dropdownOpen ? 'transform rotate-180' : ''}`} />
+          </button>
+          
+          {dropdownOpen && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-xl border border-gray-100 py-2 z-50 overflow-hidden">
               {user && (
-                <div className="flex items-center px-4 py-2">
-                  {user.picture ? (
-                    <img
-                      src={user.picture}
-                      alt={user.name}
-                      className="h-10 w-10 rounded-full object-cover mr-3"
-                    />
-                  ) : (
-                    <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium mr-3">
-                      {user.name
-                        .split(' ')
-                        .map(word => word[0])
-                        .join('')
-                        .toUpperCase()}
+                <>
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="flex items-center">
+                      {user.picture ? (
+                        <img
+                          src={user.picture}
+                          alt={user.name}
+                          className="h-10 w-10 rounded-full object-cover mr-3"
+                        />
+                      ) : (
+                        <div className="h-10 w-10 rounded-full bg-gradient-to-r from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium mr-3">
+                          {user.name
+                            .split(' ')
+                            .map(word => word[0])
+                            .join('')
+                            .toUpperCase()}
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <div className="font-medium text-gray-900 truncate">{user.name}</div>
+                        <div className="text-sm text-gray-500 truncate">{user.email}</div>
+                      </div>
                     </div>
-                  )}
-                  <div className="min-w-0">
-                    <div className="font-semibold text-gray-900 break-words truncate max-w-[140px]">{user.name}</div>
-                    <div className="text-sm text-gray-500 break-words truncate max-w-[140px]">{user.email}</div>
                   </div>
-                </div>
+                  
+                  <a
+                    href="#"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <User className="h-4 w-4 mr-3 text-gray-500" />
+                    Profile
+                  </a>
+                  
+                  <a
+                    href="#"
+                    className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                  >
+                    <Settings className="h-4 w-4 mr-3 text-gray-500" />
+                    Settings
+                  </a>
+                </>
               )}
-              <div className="border-t border-gray-100 mt-2"></div>
+              
+              <div className="border-t border-gray-100"></div>
+              
               <button
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                onClick={() => {
-                  localStorage.removeItem("authToken");
-                  window.location.href = "/login";
-                }}
+                className="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 transition-colors duration-150"
+                onClick={handleSignOut}
               >
+                <LogOut className="h-4 w-4 mr-3 text-gray-500" />
                 Sign out
               </button>
             </div>

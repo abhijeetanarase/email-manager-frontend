@@ -3,6 +3,7 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import GoogleLoginPage from "./components/login/GoogleLoginPage";
 import LoginSuccess from "./components/login/LoginSucess";
 import { Toaster } from "react-hot-toast";
+import "./toast.css"
 
 // PrivateRoute component
 const PrivateRoute = ({ children }: { children: JSX.Element }) => {
@@ -32,17 +33,28 @@ const App = () => {
         />
         <Route path="/login" element={<GoogleLoginPage />} />
       </Routes>
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: "#fff",
-            color: "#333",
-            fontSize: "14px",
-          },
-        }}
-      />
+ <Toaster
+  position="bottom-right"
+  toastOptions={{
+    duration: 3000,
+    className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md mb-5xl px-4 py-3',
+    success: {
+      className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md px-4 py-3 border-l-4 border-l-success',
+      iconTheme: {
+        primary: 'hsl(var(--success))',
+        secondary: 'hsl(var(--success-foreground))'
+      }
+    },
+    error: {
+      className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md px-4 py-3 border-l-4 border-l-destructive',
+      iconTheme: {
+        primary: 'hsl(var(--destructive))',
+        secondary: 'hsl(var(--destructive-foreground))'
+      }
+    }
+  }}
+/>
+    
     </>
   );
 };

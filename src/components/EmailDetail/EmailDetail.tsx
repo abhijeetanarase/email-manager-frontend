@@ -11,7 +11,6 @@ import {
   ThumbsUp,
   AlertCircle,
   ExternalLink,
-  CornerDownLeft,
   Download,
   Eye,
   ChevronDown,

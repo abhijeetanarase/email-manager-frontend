@@ -1,4 +1,4 @@
-import { Inbox, MailOpen, Star, Search, Clock, FileText } from 'lucide-react';
+import { MailOpen, Star, Search, Clock, FileText } from 'lucide-react';
 
 const EmptyEmailView = () => {
   return (
