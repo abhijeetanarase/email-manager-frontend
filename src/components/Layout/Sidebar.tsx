@@ -1,4 +1,5 @@
-import  { useState } from 'react';
+import { useEffect, useState } from 'react';
+
 import { 
   Mail, 
   Inbox, 
@@ -25,7 +26,7 @@ import EmailAuthPopup from '../EmailCred/EmailAuthPopup';
 import { useGmailContext } from '../../contexts/GmailContext';
 
 const Sidebar = () => {
-  const { handleAddAccount } = useGmailContext();
+  const { handleAddAccount , setFolder , folder , counts  } = useGmailContext();
   const [showPopup, setShowPopup] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     contentType: false,
@@ -36,47 +37,49 @@ const Sidebar = () => {
     senderType: false
   });
 
+ 
+
   const folders = [
-    { id: 'inbox', name: 'Inbox', icon: <Inbox size={18} />, count: 24 },
-    { id: 'archive', name: 'Archive', icon: <Archive size={18} />, count: 156 },
-    { id: 'trash', name: 'Trash', icon: <Trash size={18} />, count: 8 },
+    { id: 'inbox', name: 'Inbox', icon: <Inbox size={18} /> },
+    { id: 'archive', name: 'Archive', icon: <Archive size={18} /> },
+    { id: 'trash', name: 'Trash', icon: <Trash size={18} /> },
   ];
 
   const categoryOptions = {
     contentType: [
-      { id: 'text-only', name: 'Text-only', icon: <FileText size={16} />, count: 45 },
-      { id: 'media-rich', name: 'Media-rich', icon: <Image size={16} />, count: 12 },
-      { id: 'interactive', name: 'Interactive', icon: <Code size={16} />, count: 8 }
+      { id: 'text-only', name: 'Text-only', icon: <FileText size={16} /> },
+      { id: 'media-rich', name: 'Media-rich', icon: <Image size={16} /> },
+      { id: 'interactive', name: 'Interactive', icon: <Code size={16} /> }
     ],
     purpose: [
-      { id: 'personal', name: 'Personal', icon: <User size={16} />, count: 32 },
-      { id: 'work', name: 'Work', icon: <Mailbox size={16} />, count: 28 },
-      { id: 'transactional', name: 'Transactional', icon: <ShoppingCart size={16} />, count: 15 },
-      { id: 'promotional', name: 'Promotional', icon: <Mail size={16} />, count: 22 },
-      { id: 'newsletter', name: 'Newsletter', icon: <FileText size={16} />, count: 18 },
-      { id: 'notification', name: 'Notification', icon: <Bell size={16} />, count: 10 },
-      { id: 'spam', name: 'Spam', icon: <Shield size={16} />, count: 20 }
+      { id: 'personal', name: 'Personal', icon: <User size={16} /> },
+      { id: 'work', name: 'Work', icon: <Mailbox size={16} /> },
+      { id: 'transactional', name: 'Transactional', icon: <ShoppingCart size={16} /> },
+      { id: 'promotional', name: 'Promotional', icon: <Mail size={16} /> },
+      { id: 'newsletter', name: 'Newsletter', icon: <FileText size={16} /> },
+      { id: 'notification', name: 'Notification', icon: <Bell size={16} /> },
+      { id: 'spam', name: 'Spam', icon: <Shield size={16} /> }
     ],
     priority: [
-      { id: 'urgent', name: 'Urgent', icon: <AlertTriangle size={16} />, count: 5 },
-      { id: 'high', name: 'High', icon: <AlertTriangle size={16} />, count: 12 },
-      { id: 'normal', name: 'Normal', icon: <FileText size={16} />, count: 85 },
-      { id: 'low', name: 'Low', icon: <FileText size={16} />, count: 23 }
+      { id: 'urgent', name: 'Urgent', icon: <AlertTriangle size={16} /> },
+      { id: 'high', name: 'High', icon: <AlertTriangle size={16} /> },
+      { id: 'normal', name: 'Normal', icon: <FileText size={16} /> },
+      { id: 'low', name: 'Low', icon: <FileText size={16} /> }
     ],
     actionRequired: [
-      { id: 'immediate-action', name: 'Immediate Action', icon: <AlertTriangle size={16} />, count: 7 },
-      { id: 'follow-up-needed', name: 'Follow-up Needed', icon: <Clock size={16} />, count: 15 },
-      { id: 'read-later', name: 'Read Later', icon: <Calendar size={16} />, count: 22 },
-      { id: 'informational-only', name: 'Informational Only', icon: <FileText size={16} />, count: 61 }
+      { id: 'immediate-action', name: 'Immediate Action', icon: <AlertTriangle size={16} /> },
+      { id: 'follow-up-needed', name: 'Follow-up Needed', icon: <Clock size={16} /> },
+      { id: 'read-later', name: 'Read Later', icon: <Calendar size={16} /> },
+      { id: 'informational-only', name: 'Informational Only', icon: <FileText size={16} /> }
     ],
     timeSensitivity: [
-      { id: 'time-sensitive', name: 'Time-sensitive', icon: <Clock size={16} />, count: 18 },
-      { id: 'evergreen', name: 'Evergreen', icon: <Calendar size={16} />, count: 87 }
+      { id: 'time-sensitive', name: 'Time-sensitive', icon: <Clock size={16} /> },
+      { id: 'evergreen', name: 'Evergreen', icon: <Calendar size={16} /> }
     ],
     senderType: [
-      { id: 'human', name: 'Human', icon: <User size={16} />, count: 65 },
-      { id: 'automated', name: 'Automated', icon: <Code size={16} />, count: 25 },
-      { id: 'company', name: 'Company', icon: <Mailbox size={16} />, count: 15 }
+      { id: 'human', name: 'Human', icon: <User size={16} /> },
+      { id: 'automated', name: 'Automated', icon: <Code size={16} /> },
+      { id: 'company', name: 'Company', icon: <Mailbox size={16} /> }
     ]
   };
 
@@ -92,6 +95,17 @@ const Sidebar = () => {
     await handleAddAccount(email, appPassword);
     setShowPopup(false);
   };
+
+  // Helper function for category counts
+  function getCategoryCount(category: string, itemId: string) {
+    const apiCounts = counts?.categoryCounts?.[category];
+    if (!apiCounts) return 0;
+    if (apiCounts[itemId]) return apiCounts[itemId];
+    const found = Object.entries(apiCounts).find(
+      ([key]) => key.toLowerCase().replace(/ /g, '-').replace(/_/g, '-') === itemId
+    );
+    return found ? found[1] : 0;
+  }
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
@@ -120,20 +134,19 @@ const Sidebar = () => {
         <div className="px-4">
           <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Folders</h2>
           <ul>
-            {folders.map((folder) => (
-              <li key={folder.id}>
-                <a
-                  href="#"
-                  className="flex items-center justify-between py-2 px-3 rounded-md hover:bg-gray-100 transition-colors"
+            {folders.map((f) => (
+              <li onClick={() => setFolder(f.name.toLowerCase())} key={f.id}>
+                <div
+                  className={`flex items-center justify-between py-2 px-3 ${f.name.toLowerCase() === folder ? 'bg-gray-100' : '' } rounded-md hover:bg-gray-100 transition-colors`}
                 >
                   <div className="flex items-center">
-                    {folder.icon}
-                    <span className="ml-2 text-gray-700">{folder.name}</span>
+                    {f.icon}
+                    <span className="ml-2 text-gray-700">{f.name}</span>
                   </div>
                   <span className="text-xs bg-gray-200 text-gray-700 py-1 px-2 rounded-full">
-                    {folder.count}
+                    {counts?.folderCounts?.[f.name.toLowerCase()] ?? 0}
                   </span>
-                </a>
+                </div>
               </li>
             ))}
           </ul>
@@ -171,7 +184,7 @@ const Sidebar = () => {
                         <span className="text-sm text-gray-700">{item.name}</span>
                       </div>
                       <span className="text-xs bg-gray-100 text-gray-600 py-0.5 px-1.5 rounded-full">
-                        {item.count}
+                        {getCategoryCount(category, item.id)}
                       </span>
                     </a>
                   </li>

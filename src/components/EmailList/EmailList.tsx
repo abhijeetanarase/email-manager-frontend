@@ -6,6 +6,8 @@ import { SlidersHorizontal, RefreshCw, ChevronLeft, ChevronRight, MailOpen, Chev
 import { useGmailContext } from '../../contexts/GmailContext';
 import EmailListItemSkeleton from '../Skeleton/EmailListItemSkeleton';
 import { motion, AnimatePresence } from 'framer-motion';
+import ConfirmDeletePopup from './ConfirmDeletePopup';
+import ConfirmArchivePopup from './ConfirmArchivePopup';
 
 interface EmailListProps {
   emails: Email[];
@@ -17,8 +19,10 @@ const EmailList: React.FC<EmailListProps> = ({
   onEmailSelect,
   selectedEmail
 }) => {
-  const { emails, fetchLast30Days, currentPage, setCurrentPage, totalPages, loading , updateEmailStatus } = useGmailContext();
+  const { emails, fetchLast30Days, currentPage, setCurrentPage, totalPages, loading , updateEmailStatus, setEmails, bulkUpdateEmails, setCounts, folder } = useGmailContext();
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedEmailIds, setSelectedEmailIds] = useState<string[]>([]);
+  const [showConfirmPopup, setShowConfirmPopup] = useState<null | 'archive' | 'trash'>(null);
 
 
   const handleRefresh = async () => {
@@ -49,16 +53,99 @@ const EmailList: React.FC<EmailListProps> = ({
     setCurrentPage(totalPages);
   };
 
-  const handleStarClick = async(e: React.MouseEvent , email : Email) => {
-    e.stopPropagation();
-    if (email.starred) {
-      // If already starred, unstar it
-      onEmailSelect(email , "starred");
-      await updateEmailStatus('unstarred', email._id);
-      return;
+ 
+
+  // Bulk selection handlers
+  const handleCheck = (id: string, checked: boolean) => {
+    setSelectedEmailIds(prev =>
+      checked ? [...prev, id] : prev.filter(eid => eid !== id)
+    );
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    setSelectedEmailIds(checked ? emails.map(e => e._id) : []);
+  };
+
+  const handleBulkArchive = async () => {
+    setShowConfirmPopup('archive');
+  };
+
+  const handleBulkTrash = async () => {
+    setShowConfirmPopup('trash');
+  };
+
+  const getBulkArchivePopupProps = () => {
+    if (folder === 'archive') {
+      return {
+        title: 'Unarchive',
+        message: 'Are you sure you want to move selected emails to Inbox?',
+        action: 'removearchive'
+      };
     }
-     onEmailSelect(email , "starred");
-    await updateEmailStatus( 'starred' ,email._id);
+    if (folder === 'trash') {
+      return {
+        title: 'Remove from Trash',
+        message: 'Are you sure you want to move selected emails to Inbox?',
+        action: 'removefromtrash'
+      };
+    }
+    return {
+      title: 'Archive',
+      message: 'Are you sure you want to archive selected emails?',
+      action: 'archive'
+    };
+  };
+
+  const confirmBulkAction = async () => {
+    if (showConfirmPopup === 'archive') {
+      const { action } = getBulkArchivePopupProps();
+      if (action === 'removearchive' || action === 'removefromtrash') {
+        // Unarchive or Remove from Trash
+        const updated = emails.filter(e => !selectedEmailIds.includes(e._id));
+        setEmails(updated);
+        await bulkUpdateEmails(selectedEmailIds, 'inbox');
+        setCounts((prev: any) => ({
+          ...prev,
+          folderCounts: {
+            ...prev.folderCounts,
+            [folder]: Math.max((prev.folderCounts?.[folder] || 1) - selectedEmailIds.length, 0),
+            inbox: (prev.folderCounts?.inbox || 0) + selectedEmailIds.length,
+          }
+        }));
+      } else {
+        // Archive
+        const updated = emails.filter(e => !selectedEmailIds.includes(e._id));
+        setEmails(updated);
+        await bulkUpdateEmails(selectedEmailIds, 'archive');
+        setCounts((prev: any) => ({
+          ...prev,
+          folderCounts: {
+            ...prev.folderCounts,
+            inbox: Math.max((prev.folderCounts?.inbox || 1) - selectedEmailIds.length, 0),
+            archive: (prev.folderCounts?.archive || 0) + selectedEmailIds.length,
+          }
+        }));
+      }
+    }
+    if (showConfirmPopup === 'trash') {
+      const updated = emails.filter(e => !selectedEmailIds.includes(e._id));
+      setEmails(updated);
+      await bulkUpdateEmails(selectedEmailIds, 'trash');
+      setCounts((prev: any) => ({
+        ...prev,
+        folderCounts: {
+          ...prev.folderCounts,
+          inbox: Math.max((prev.folderCounts?.inbox || 1) - selectedEmailIds.length, 0),
+          trash: (prev.folderCounts?.trash || 0) + selectedEmailIds.length,
+        }
+      }));
+    }
+    setSelectedEmailIds([]);
+    setShowConfirmPopup(null);
+  };
+
+  const cancelBulkAction = () => {
+    setShowConfirmPopup(null);
   };
 
   if (loading) {
@@ -81,17 +168,26 @@ const EmailList: React.FC<EmailListProps> = ({
 
   return (
     <div className="bg-white border-r border-gray-200 h-full flex flex-col">
+      {/* Bulk Action Toolbar हटाएँ */}
       {/* Header with pagination controls */}
       <div className="border-b border-gray-200 px-4 py-3 flex items-center justify-between bg-gradient-to-r from-gray-50 to-white">
-        <h2 className="text-lg font-semibold text-gray-800 flex items-center">
-          <span className="bg-blue-500 w-2 h-2 rounded-full mr-2"></span>
-          Inbox
-          {emails.length > 0 && (
-            <span className="ml-2 text-sm font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
-              {currentPage} / {totalPages}
-            </span>
-          )}
-        </h2>
+        <div className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={selectedEmailIds.length === emails.length && emails.length > 0}
+            onChange={e => handleSelectAll(e.target.checked)}
+            className="accent-blue-600"
+          />
+          <h2 className="text-lg font-semibold text-gray-800 flex items-center">
+            <span className="bg-blue-500 w-2 h-2 rounded-full mr-2"></span>
+            Inbox
+            {emails.length > 0 && (
+              <span className="ml-2 text-sm font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                {currentPage} / {totalPages}
+              </span>
+            )}
+          </h2>
+        </div>
         
         <div className="flex items-center space-x-2">
           <div className="flex items-center bg-gray-50 rounded-lg divide-x divide-gray-200 border border-gray-200 shadow-sm">
@@ -154,8 +250,30 @@ const EmailList: React.FC<EmailListProps> = ({
           </button>
         </div>
       </div>
-      
-      <EmailToolbar />
+      {selectedEmailIds.length > 0 && (
+        <EmailToolbar
+          bulkEnabled={true}
+          onBulkArchive={handleBulkArchive}
+          onBulkTrash={handleBulkTrash}
+          selectedCount={selectedEmailIds.length}
+        />
+      )}
+      {showConfirmPopup === 'archive' && (
+        <ConfirmArchivePopup
+          open={true}
+          onConfirm={confirmBulkAction}
+          onCancel={cancelBulkAction}
+          title={getBulkArchivePopupProps().title}
+          message={getBulkArchivePopupProps().message}
+        />
+      )}
+      {showConfirmPopup === 'trash' && (
+        <ConfirmDeletePopup
+          open={true}
+          onConfirm={confirmBulkAction}
+          onCancel={cancelBulkAction}
+        />
+      )}
       
       <div className="flex-1 overflow-y-auto">
         <AnimatePresence>
@@ -191,7 +309,7 @@ const EmailList: React.FC<EmailListProps> = ({
               <motion.ul className="divide-y divide-gray-200">
                 {emails.map((email) => (
                   <motion.li
-                    key={email.id}
+                    key={email._id}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
@@ -199,8 +317,10 @@ const EmailList: React.FC<EmailListProps> = ({
                     <EmailListItem 
                       email={email}
                       isSelected={selectedEmail?._id === email._id}
+                      checked={selectedEmailIds.includes(email._id)}
+                      onCheck={checked => handleCheck(email._id, checked)}
                       onClick={() => {onEmailSelect(email , "selection"); updateEmailStatus("read" ,email._id )}}
-                      onEmailAction={() => {}} // Add this line or provide your handler
+                      onEmailAction={() => {}} 
                     />
                   </motion.li>
                 ))}

@@ -15,15 +15,18 @@ import {
   Shield,
   Archive,
   Trash2,
-  MailOpen,
+  Inbox,
 } from "lucide-react";
 import { formatRelativeTime } from "../../utils/dateUtils";
 import { Email } from "../../types/email";
 import { useGmailContext } from "../../contexts/GmailContext";
+import ConfirmDeletePopup from "./ConfirmDeletePopup";
 
 interface EmailListItemProps {
   email: Email;
   isSelected: boolean;
+  checked: boolean;
+  onCheck: (checked: boolean) => void;
   onClick: () => void;
   onEmailAction: (email: Email) => void;
 }
@@ -31,13 +34,16 @@ interface EmailListItemProps {
 const EmailListItem: React.FC<EmailListItemProps> = ({
   email,
   isSelected,
+  checked,
+  onCheck,
   onClick,
 }) => {
 
-      const {emails , setEmails , updateEmailStatus} = useGmailContext();
+      const {emails , setEmails , updateEmailStatus, setCounts, folder} = useGmailContext();
      
       
   const [isHovered, setIsHovered] = useState(false);
+  const [showDeletePopup, setShowDeletePopup] = useState(false);
 
 
   // New functions to handle email actions
@@ -50,19 +56,65 @@ const EmailListItem: React.FC<EmailListItemProps> = ({
     await updateEmailStatus( email.starred ? "unstarred" : "starred", email._id);
   };
 
-  const handleToggleRead = (e: React.MouseEvent) => {
-    e.stopPropagation();
-   
-  };
+  
 
-  const handleArchive = (e: React.MouseEvent) => {
+  
+
+  const handleArchive = async(e: React.MouseEvent) => {
     e.stopPropagation();
-   
+    if (folder === 'archive') {
+      // Unarchive
+      const updated = emails.filter(em =>
+        em._id != email._id 
+      );
+      setEmails(updated);
+      await updateEmailStatus('removearchive', email._id);
+      setCounts((prev: any) => ({
+        ...prev,
+        folderCounts: {
+          ...prev.folderCounts,
+          archive: Math.max((prev.folderCounts?.archive || 1) - 1, 0),
+          inbox: (prev.folderCounts?.inbox || 0) + 1,
+        }
+      }));
+    } else {
+      // Archive
+      const filteredEmails  = emails.filter((em)=> em._id != email._id)
+      setEmails(filteredEmails);
+      await updateEmailStatus('archive' , email._id);
+      setCounts((prev: any) => ({
+        ...prev,
+        folderCounts: {
+          ...prev.folderCounts,
+          inbox: Math.max((prev.folderCounts?.inbox || 1) - 1, 0),
+          archive: (prev.folderCounts?.archive || 0) + 1,
+        }
+      }));
+    }
   };
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
-   
+    setShowDeletePopup(true);
+  };
+
+  const confirmDelete = async () => {
+    const filteredEmails = emails.filter((em) => em._id != email._id);
+    setEmails(filteredEmails);
+    await updateEmailStatus("trash", email._id);
+    setCounts((prev: any) => ({
+      ...prev,
+      folderCounts: {
+        ...prev.folderCounts,
+        inbox: Math.max((prev.folderCounts?.inbox || 1) - 1, 0),
+        trash: (prev.folderCounts?.trash || 0) + 1,
+      }
+    }));
+    setShowDeletePopup(false);
+  };
+
+  const cancelDelete = () => {
+    setShowDeletePopup(false);
   };
 
   // Icon mapping for different purposes
@@ -125,6 +177,14 @@ const EmailListItem: React.FC<EmailListItemProps> = ({
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex gap-3 items-start">
+        {/* Checkbox */}
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={e => onCheck(e.target.checked)}
+          onClick={e => e.stopPropagation()}
+          className="mt-1 accent-blue-600"
+        />
         {/* Star */}
         <button
           onClick={(e) => handleStarClick(e)}
@@ -165,14 +225,7 @@ const EmailListItem: React.FC<EmailListItemProps> = ({
               {/* Show action buttons when hovered or selected */}
               {(isHovered || isSelected) && (
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={handleToggleRead}
-                    className="p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full"
-                    title={email.read ? "Mark as unread" : "Mark as read"}
-                    aria-label={email.read ? "Mark as unread" : "Mark as read"}
-                  >
-                    <MailOpen className="w-4 h-4" />
-                  </button>
+                  
                   
                   <button
                     onClick={handleArchive}
@@ -180,7 +233,7 @@ const EmailListItem: React.FC<EmailListItemProps> = ({
                     title="Archive"
                     aria-label="Archive"
                   >
-                    <Archive className="w-4 h-4" />
+                    {folder === 'archive' ? <Inbox size={18} /> : <Archive size={18} />}
                   </button>
                   
                   <button
@@ -316,6 +369,11 @@ const EmailListItem: React.FC<EmailListItemProps> = ({
           </div>
         </div>
       </div>
+      <ConfirmDeletePopup
+        open={showDeletePopup}
+        onConfirm={confirmDelete}
+        onCancel={cancelDelete}
+      />
     </div>
   );
 };

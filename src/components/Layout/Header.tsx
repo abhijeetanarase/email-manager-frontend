@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { Search, Bell, Menu, X, ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import api from '../../utils/api';
+import useDebounce from '../../hooks/useDebounce';
+import { useGmailContext } from '../../contexts/GmailContext';
 
 interface HeaderProps {
   toggleSidebar: () => void;
@@ -13,7 +15,11 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  const { searchEmails, checkAuth } = useGmailContext();
+  const debouncedSearch = useDebounce(searchQuery, 400);
+
   useEffect(() => {
+     checkAuth();
     const fetchUserData = async () => {
       try {
         const response = await api.get('/user/profile');
@@ -25,6 +31,12 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
 
     fetchUserData();
   }, []);
+
+  useEffect(() => {
+    if (debouncedSearch.trim()) {
+      searchEmails(debouncedSearch.trim());
+    }
+  }, [debouncedSearch]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -49,6 +61,8 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
     window.location.href = "/login";
   };
 
+
+
   return (
     <header className="bg-white border-b border-gray-100 py-3 px-6 flex items-center justify-between sticky top-0 z-40 shadow-sm">
       <div className="flex items-center space-x-4">
@@ -59,9 +73,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
           {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
         </button>
         
-        <div className="hidden md:block text-xl font-semibold text-gray-800">
-          Dashboard
-        </div>
+      
       </div>
       
       <div className="flex-1 max-w-2xl mx-4">
@@ -72,7 +84,7 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
           <input
             type="text"
             className="block w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white focus:border-transparent transition-all duration-200 text-sm"
-            placeholder="Search emails, documents, projects..."
+            placeholder="Search emails with subjects and keywords"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -80,11 +92,11 @@ const Header: React.FC<HeaderProps> = ({ toggleSidebar, sidebarOpen }) => {
       </div>
       
       <div className="flex items-center space-x-4">
-        <button className="relative p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition-colors duration-200">
+        {/* <button className="relative p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none transition-colors duration-200">
           <span className="sr-only">View notifications</span>
           <Bell className="h-5 w-5" />
           <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
-        </button>
+        </button> */}
         
         <div className="relative" ref={dropdownRef}>
           <button

@@ -16,11 +16,15 @@ import {
   ChevronDown,
   ChevronUp,
   MoreVertical,
+  Inbox,
 } from "lucide-react";
 import { Email } from "../../types/email";
 import { formatDate } from "../../utils/dateUtils";
 import EmailReplyBox from "./EmailReplyBox";
 import EmptyEmailView from "./EmptyEmailView";
+import { useGmailContext } from '../../contexts/GmailContext';
+import ConfirmDeletePopup from '../EmailList/ConfirmDeletePopup';
+
 
 interface EmailDetailProps {
   email: Email | null;
@@ -28,11 +32,16 @@ interface EmailDetailProps {
 }
 
 const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
+  const { updateEmailStatus, setEmails, emails, setCounts, counts, folder } = useGmailContext();
   const [showReply, setShowReply] = useState(false);
   const [isExpanded, setIsExpanded] = useState(true);
   const replyBoxRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const scrollPosition = useRef<number>(0);
+  const [showTrashPopup, setShowTrashPopup] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showHtmlModal, setShowHtmlModal] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   // Scroll to reply box when it is shown, or restore scroll when hidden
   useEffect(() => {
@@ -60,6 +69,19 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
     }
   }, [showReply]);
 
+  useEffect(() => {
+    if (!showMenu) return;
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showMenu]);
+
   if (!email) {
     return <EmptyEmailView />;
   }
@@ -80,7 +102,21 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
     "out-of-office": <ExternalLink size={16} className="mr-1" />,
   };
 
-  const handleDownload = (
+  const handlePrint = () => {
+    if (!email) return;
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write('<html><head><title>Print Email</title></head><body>');
+      printWindow.document.write(`<h2>${email.subject}</h2>`);
+      printWindow.document.write(email.body);
+      printWindow.document.write('</body></html>');
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  // handleDownload (email message) और handleDownloadAttachment (attachment) अलग-अलग रखें
+  const handleDownloadAttachment = (
     attachmentUrl: string | undefined,
     filename: string | undefined
   ) => {
@@ -110,6 +146,98 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
     window.open(attachmentUrl, "_blank");
   };
 
+  const handleDownloadMessage = () => {
+    if (!email) return;
+    const text = `Subject: ${email.subject}\nFrom: ${email.from?.email}\nTo: ${email.to?.join(', ')}\n\n${email.body}`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${email.subject || 'email'}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+  };
+
+
+  const handleCopyContent = async () => {
+    if (!email) return;
+    try {
+      await navigator.clipboard.writeText(email.body);
+      alert('Email content copied to clipboard!');
+    } catch {
+      alert('Failed to copy!');
+    }
+  };
+
+  // Email actions
+  const handleStar = async () => {
+    const updated = emails.map(e =>
+      e._id === email._id ? { ...e, starred: !e.starred } : e
+    );
+    setEmails(updated);
+    email.starred = !email.starred;
+    await updateEmailStatus(email.starred ? 'unstarred' : 'starred', email._id);
+  };
+
+  const handleArchive = async () => {
+    if (folder === 'archive') {
+      // Unarchive
+      const updated = emails.filter(e =>
+        e._id != email._id 
+      );
+      setEmails(updated);
+      await updateEmailStatus('removearchive', email._id);
+      setCounts((prev: any) => ({
+        ...prev,
+        folderCounts: {
+          ...prev.folderCounts,
+          archive: Math.max((prev.folderCounts?.archive || 1) - 1, 0),
+          inbox: (prev.folderCounts?.inbox || 0) + 1,
+        }
+      }));
+    } else {
+      // Archive
+      const updated = emails.filter(e =>
+        e._id != email._id 
+      );
+      setEmails(updated);
+      await updateEmailStatus('archive', email._id);
+      setCounts((prev: any) => ({
+        ...prev,
+        folderCounts: {
+          ...prev.folderCounts,
+          inbox: Math.max((prev.folderCounts?.inbox || 1) - 1, 0),
+          archive: (prev.folderCounts?.archive || 0) + 1,
+        }
+      }));
+    }
+  };
+
+  const handleTrash = async () => {
+    setShowTrashPopup(true);
+  };
+
+  const confirmTrash = async () => {
+    const updated = emails.filter(e => e._id !== email._id);
+    setEmails(updated);
+    await updateEmailStatus('trash', email._id);
+    setCounts((prev: any) => ({
+      ...prev,
+      folderCounts: {
+        ...prev.folderCounts,
+        inbox: Math.max((prev.folderCounts?.inbox || 1) - 1, 0),
+        trash: (prev.folderCounts?.trash || 0) + 1,
+      }
+    }));
+    setShowTrashPopup(false);
+  };
+
+  const cancelTrash = () => {
+    setShowTrashPopup(false);
+  };
+
   return (
     <div className="h-full flex flex-col bg-white shadow-sm rounded-lg overflow-hidden">
       <div className="border-b border-gray-200 p-4 flex items-center justify-between bg-gray-50">
@@ -129,12 +257,14 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
           <button
             className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
             title="Archive"
+            onClick={handleArchive}
           >
-            <Archive size={18} />
+            {folder === 'archive' ? <Inbox size={18} /> : <Archive size={18} />}
           </button>
           <button
             className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
             title="Delete"
+            onClick={handleTrash}
           >
             <Trash2 size={18} />
           </button>
@@ -151,9 +281,25 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
           >
             <Forward size={18} />
           </button>
-          <button className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-            <MoreVertical size={18} />
-          </button>
+          <div className="relative" ref={menuRef}>
+            <button
+              className="p-2 rounded-full text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+              onClick={() => setShowMenu(v => !v)}
+              title="More"
+            >
+              <MoreVertical size={18} />
+            </button>
+            {showMenu && (
+              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded shadow-lg z-50">
+                <button
+                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={() => { setShowMenu(false); handlePrint(); }}
+                >
+                  Print
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -163,7 +309,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
             <h1 className="text-2xl font-semibold text-gray-900">
               {email.subject}
             </h1>
-            <button className="p-1 text-gray-400 hover:text-yellow-500 transition-colors">
+            <button className="p-1 text-gray-400 hover:text-yellow-500 transition-colors" onClick={handleStar}>
               <Star
                 className={`h-5 w-5 ${
                   email.starred ? "text-yellow-500 fill-yellow-500" : ""
@@ -300,9 +446,7 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
                               <Eye size={16} />
                             </button>
                             <button
-                              onClick={() =>
-                                handleDownload(attachment.url, attachment.filename)
-                              }
+                              onClick={() => handleDownloadAttachment(attachment.url, attachment.filename)}
                               className="p-1.5 text-gray-500 hover:text-green-500 hover:bg-green-50 rounded-full transition-colors"
                               title="Download"
                             >
@@ -347,6 +491,29 @@ const EmailDetail: React.FC<EmailDetailProps> = ({ email, onBack }) => {
           </div>
         )}
       </div>
+      <ConfirmDeletePopup
+        open={showTrashPopup}
+        onConfirm={confirmTrash}
+        onCancel={cancelTrash}
+      />
+      {showHtmlModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-[90vw] max-w-2xl relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-gray-700"
+              onClick={() => setShowHtmlModal(false)}
+            >
+              Close
+            </button>
+            <h2 className="text-lg font-semibold mb-4">Raw HTML</h2>
+            <textarea
+              className="w-full h-80 border rounded p-2 text-xs font-mono bg-gray-50"
+              value={email.body}
+              readOnly
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

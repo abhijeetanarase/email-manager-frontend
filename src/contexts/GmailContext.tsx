@@ -6,6 +6,7 @@ import {
   useEffect,
 } from "react";
 import api from "../utils/api";
+// import { bulkUpdateEmails } from '../utils/api'; // इसे हटा दें
 
 // 1. Define the type for your context value
 interface GmailContextType {
@@ -19,16 +20,23 @@ interface GmailContextType {
     appPassword: string
   ) => Promise<void>;
   fetchCredentials: () => Promise<void>;
- emails: any[]; // Adjust type as needed
- updateEmailStatus: (type : string, emailId: string) => Promise<void>;
-fetchLast30Days: () => Promise<void>;
-currentPage: number;
-setCurrentPage: (page: number) => void;
-totalPages: number;
-loading: boolean;
+  emails: any[]; // Adjust type as needed
+  updateEmailStatus: (type : string, emailId: string) => Promise<void>;
+  fetchLast30Days: () => Promise<void>;
+  currentPage: number;
+  setCurrentPage: (page: number) => void;
+  totalPages: number;
+  loading: boolean;
   setEmails: (emails: any[]) => void;
-
-  
+  setFolder : (folder : string) => void;
+  folder : string;
+  setCounts : (counts : any) => void;
+  counts : any;
+  bulkUpdateEmails: (emailIds: string[], action: 'archive' | 'trash' | 'inbox') => Promise<any>;
+  searchEmails: (query: string) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  checkAuth: () => Promise<void>;
 }
 
 // 2. Create the context with a default value or `null`
@@ -54,6 +62,9 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages , setTotalPages] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [folder , setFolder ] = useState("inbox")
+  const [counts, setCounts] = useState<any>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   
   const fetchCredentials = async () => {
@@ -88,12 +99,26 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
     }
   };
 
+  const checkAuth = async () => {
+    try {
+      await api.get('/user/check-auth');
+    } catch (error: any) {
+      if (error?.response?.status === 403) {
+        localStorage.removeItem('authToken');
+        window.location.href = '/login';
+      }
+    }
+  };
+
   const fetchEmails = async () => {
     if (!selectedAccount) return;
-
     try {
     setLoading(true);
-      const response = await api.get(`/email/${selectedAccount._id}?n=20&p=${currentPage}`);
+      let url = `/email/${selectedAccount._id}?n=20&p=${currentPage}&folder=${folder}`;
+      if (searchQuery.trim()) {
+        url += `&search=${encodeURIComponent(searchQuery.trim())}`;
+      }
+      const response = await api.get(url);
     
       setEmails(response?.data?.emails);
       setTotalPages(response?.data?.totalPages || 0);
@@ -108,7 +133,6 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
 
   const updateEmailStatus = async(type :string  , emailId : string)=>{
     if (!selectedAccount) return;
-
     try {
        await api.patch(`/email/status/${emailId}`, { type : type });
     } catch (error) {
@@ -126,6 +150,16 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       
      }
   }
+
+
+   async function fetchEmailCounts() {
+    if (selectedAccount) {
+      const res = await api.get(`/email/counts/${selectedAccount._id}?folder=${folder}`);
+      setCounts(res.data)
+
+      
+    }
+  }
    
 
 
@@ -135,7 +169,7 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       fetchEmails();
     }
   }
-  , [selectedAccount , currentPage ]);
+  , [selectedAccount , currentPage , folder , searchQuery ]);
   
  
 
@@ -148,6 +182,28 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       setSelectedAccount(emailCred[0]);
     }
   }, [emailCred]);
+
+  useEffect(()=>{
+    if (selectedAccount) {
+      fetchEmailCounts()
+      
+    }
+  },[selectedAccount,folder,emails])
+
+  const bulkUpdateEmails = async (emailIds: string[], action: 'archive' | 'trash' | 'inbox') => {
+    if (!selectedAccount) return;
+    try {
+      const res = await api.post('/email/bulk-update', { emailIds, action });
+      return res.data;
+    } catch (error) {
+      console.error('Bulk update failed:', error);
+      throw error;
+    }
+  };
+
+  const searchEmails = (query: string) => {
+    setSearchQuery(query);
+  };
 
   return (
     <GmailContext.Provider value={{
@@ -165,7 +221,16 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       setCurrentPage,
       totalPages ,
       loading,
-      setEmails
+      setEmails,
+      setFolder,
+      folder,
+      setCounts,
+      counts,
+      bulkUpdateEmails,
+      searchEmails,
+      searchQuery,
+      setSearchQuery,
+      checkAuth,
     }}>
       {children}
     </GmailContext.Provider>
