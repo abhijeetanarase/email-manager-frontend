@@ -26,7 +26,7 @@ import EmailAuthPopup from '../EmailCred/EmailAuthPopup';
 import { useGmailContext } from '../../contexts/GmailContext';
 
 const Sidebar = () => {
-  const { handleAddAccount , setFolder , folder , counts  } = useGmailContext();
+  const { handleAddAccount, setFolder, folder, counts, filters, setFilters } = useGmailContext();
   const [showPopup, setShowPopup] = useState(false);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     contentType: false,
@@ -36,6 +36,31 @@ const Sidebar = () => {
     timeSensitivity: false,
     senderType: false
   });
+
+  // Dark mode state
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
+    // On mount, respect saved theme
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') setDarkMode(true);
+    if (saved === 'light') setDarkMode(false);
+  }, []);
 
  
 
@@ -92,8 +117,9 @@ const Sidebar = () => {
 
   const handleClosePopup = () => setShowPopup(false);
   const handleSubmitPopup = async (email: string, appPassword: string) => {
-    await handleAddAccount(email, appPassword);
-    setShowPopup(false);
+    const result = await handleAddAccount(email, appPassword);
+    if (result.success) setShowPopup(false);
+    return result;
   };
 
   // Helper function for category counts
@@ -106,6 +132,23 @@ const Sidebar = () => {
     );
     return found ? found[1] : 0;
   }
+
+  // Helper functions for filters
+  const isFilterApplied = (cat: string, val: string) => (filters[cat] || []).includes(val);
+  const toggleFilter = (cat: string, val: string) => {
+    setFilters((prev: Record<string, string[]>) => {
+      const arr = prev[cat] || [];
+      if (arr.includes(val)) {
+        return { ...prev, [cat]: arr.filter((v: string) => v !== val) };
+      } else {
+        return { ...prev, [cat]: [...arr, val] };
+      }
+    });
+  };
+  const removeFilter = (cat: string, val: string) => {
+    setFilters((prev: Record<string, string[]>) => ({ ...prev, [cat]: (prev[cat] || []).filter((v: string) => v !== val) }));
+  };
+  const totalFiltersApplied = Object.values(filters).reduce((a, b) => a + b.length, 0);
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 h-screen flex flex-col">
@@ -129,6 +172,24 @@ const Sidebar = () => {
           <EmailAuthPopup onClose={handleClosePopup} onSubmit={handleSubmitPopup} />
         )}
       </div>
+
+      {totalFiltersApplied > 0 && (
+        <div className="px-4 py-2">
+          <span className="text-xs text-gray-600 font-medium">
+            {totalFiltersApplied} filters applied
+          </span>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {Object.entries(filters).flatMap(([cat, vals]) =>
+              vals.map(val => (
+                <span key={cat+val} className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full text-xs flex items-center">
+                  {val}
+                  <button onClick={() => removeFilter(cat, val)} className="ml-1 text-blue-500 hover:text-blue-700">&times;</button>
+                </span>
+              ))
+            )}
+          </div>
+        </div>
+      )}
 
       <nav className="mt-4 flex-1 overflow-y-auto">
         <div className="px-4">
@@ -172,21 +233,18 @@ const Sidebar = () => {
             </button>
 
             {expandedSections[category] && (
-              <ul className="ml-4 mt-1">
+              <ul className="ml-4 mt-1 flex flex-wrap gap-2">
                 {items.map((item) => (
                   <li key={item.id}>
-                    <a
-                      href="#"
-                      className="flex items-center justify-between py-1.5 px-3 rounded-md hover:bg-gray-50 transition-colors"
+                    <button
+                      className={`px-2 py-1 rounded-full text-xs font-medium border transition-colors ${isFilterApplied(category, item.name)
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-gray-100 text-gray-700 border-gray-200 hover:bg-blue-50 hover:border-blue-300'}
+                      `}
+                      onClick={() => toggleFilter(category, item.name)}
                     >
-                      <div className="flex items-center">
-                        <span className="text-gray-500 mr-2">{item.icon}</span>
-                        <span className="text-sm text-gray-700">{item.name}</span>
-                      </div>
-                      <span className="text-xs bg-gray-100 text-gray-600 py-0.5 px-1.5 rounded-full">
-                        {getCategoryCount(category, item.id)}
-                      </span>
-                    </a>
+                      {item.name}
+                    </button>
                   </li>
                 ))}
               </ul>

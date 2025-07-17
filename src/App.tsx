@@ -1,61 +1,84 @@
-import Box from "./pages/Box";
-import { Routes, Route, Navigate } from "react-router-dom";
-import GoogleLoginPage from "./components/login/GoogleLoginPage";
-import LoginSuccess from "./components/login/LoginSucess";
-import { Toaster } from "react-hot-toast";
-
-
-// PrivateRoute component
-const PrivateRoute = ({ children }: { children: JSX.Element }) => {
-  const token = localStorage.getItem("authToken");
-  return token ? children : <Navigate to="/login" replace />;
-};
+import React, { useState, useRef } from 'react';
+import Sidebar from './components/Layout/Sidebar';
+import EmailList from './components/EmailList/EmailList';
+import EmailDetail from './components/EmailDetail/EmailDetail';
+import Header from './components/Layout/Header';
+import { useGmailContext } from './contexts/GmailContext';
+import { Email } from './types/email';
 
 const App = () => {
-  const token = localStorage.getItem("authToken");
+  // अब panels में सिर्फ sidebar की state रहेगी
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const { emails } = useGmailContext();
+  const [selectedEmail, setSelectedEmail] = useState<Email | null>(null);
+
+  // EmailList की width के लिए state
+  const [listWidth, setListWidth] = useState(400); // default 400px
+  const minWidth = 250;
+  const maxWidth = 700;
+  const isResizing = useRef(false);
+
+  const handleEmailSelect = (email: Email, type: string) => {
+    setSelectedEmail(email);
+  };
+
+  const handleBack = () => {
+    setSelectedEmail(null);
+  };
+
+  // Mouse events
+  const handleMouseDown = (e: React.MouseEvent) => {
+    isResizing.current = true;
+    document.body.style.cursor = 'col-resize';
+  };
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing.current) return;
+      // Sidebar की width अगर है तो उसे भी consider करें
+      const sidebarWidth = sidebarOpen ? 240 : 0;
+      let newWidth = e.clientX - sidebarWidth;
+      if (newWidth < minWidth) newWidth = minWidth;
+      if (newWidth > maxWidth) newWidth = maxWidth;
+      setListWidth(newWidth);
+    };
+    const handleMouseUp = () => {
+      isResizing.current = false;
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [sidebarOpen]);
 
   return (
-    <>
-      <Routes>
-        <Route
-          path="/"
-          element={
-            <PrivateRoute>
-              <Box />
-            </PrivateRoute>
-          }
+    <div className="h-screen flex flex-col">
+      <Header toggleSidebar={() => setSidebarOpen((open) => !open)} sidebarOpen={sidebarOpen} />
+     
+     
+      <div className="flex flex-1 min-h-0">
+        {sidebarOpen && <Sidebar />}
+        {/* EmailList adjustable width */}
+        <div
+          className="flex flex-col min-h-0"
+          style={{ width: listWidth, minWidth: minWidth, maxWidth: maxWidth }}
+        >
+          <EmailList emails={emails} onEmailSelect={handleEmailSelect} selectedEmail={selectedEmail} />
+        </div>
+        {/* Draggable divider */}
+        <div
+          style={{ width: 6, cursor: 'col-resize', background: '#e5e7eb', zIndex: 10 }}
+          onMouseDown={handleMouseDown}
+          className="hover:bg-blue-300 transition-colors"
         />
-        <Route
-          path="/success"
-          element={
-            <LoginSuccess/>
-          }
-        />
-        <Route path="/login" element={<GoogleLoginPage />} />
-      </Routes>
- <Toaster
-  position="bottom-right"
-  toastOptions={{
-    duration: 3000,
-    className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md mb-5xl px-4 py-3',
-    success: {
-      className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md px-4 py-3 border-l-4 border-l-success',
-      iconTheme: {
-        primary: 'hsl(var(--success))',
-        secondary: 'hsl(var(--success-foreground))'
-      }
-    },
-    error: {
-      className: 'font-sans text-sm bg-background text-foreground border border-border rounded-md shadow-md px-4 py-3 border-l-4 border-l-destructive',
-      iconTheme: {
-        primary: 'hsl(var(--destructive))',
-        secondary: 'hsl(var(--destructive-foreground))'
-      }
-    }
-  }}
-/>
-    
-    </>
+        {/* EmailDetail fills remaining space */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <EmailDetail email={selectedEmail} onBack={handleBack} />
+        </div>
+      </div>
+    </div>
   );
 };
 

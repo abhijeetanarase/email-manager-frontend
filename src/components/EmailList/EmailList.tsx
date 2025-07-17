@@ -211,15 +211,7 @@ const EmailList: React.FC<EmailListProps> = ({
             >
               <ChevronLeft size={18} />
             </button>
-            <button 
-              onClick={handleRefresh} 
-              className={`p-1.5 px-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors ${
-                isLoading ? 'animate-spin' : ''
-              }`}
-              title="Refresh"
-            >
-              <RefreshCw size={18} />
-            </button>
+            {/* Refresh बटन और Filters बटन हटा दिए गए हैं */}
             <button 
               onClick={handleNextPage}
               disabled={currentPage === totalPages || emails.length === 0}
@@ -241,13 +233,6 @@ const EmailList: React.FC<EmailListProps> = ({
               <ChevronsRight size={18} />
             </button>
           </div>
-          
-          <button 
-            className="p-1.5 rounded-lg text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors border border-gray-200 shadow-sm"
-            title="Filters"
-          >
-            <SlidersHorizontal size={18} />
-          </button>
         </div>
       </div>
       {selectedEmailIds.length > 0 && (

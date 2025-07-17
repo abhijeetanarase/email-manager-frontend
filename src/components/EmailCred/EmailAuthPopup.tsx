@@ -3,7 +3,7 @@ import { useState } from "react";
 
 interface EmailAuthPopupProps {
   onClose: () => void;
-  onSubmit: (email: string, appPassword: string) => void;
+  onSubmit: (email: string, appPassword: string) => Promise<{ success: boolean; error?: string }>;
 }
 
 export default function EmailAuthPopup({ onClose, onSubmit }: EmailAuthPopupProps) {
@@ -13,7 +13,7 @@ export default function EmailAuthPopup({ onClose, onSubmit }: EmailAuthPopupProp
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -33,9 +33,19 @@ export default function EmailAuthPopup({ onClose, onSubmit }: EmailAuthPopupProp
     }
 
     setIsLoading(true);
-    onSubmit(trimmedEmail, trimmedPassword);
-    // In a real app, you would handle the submission async
-    // and setIsLoading(false) when done
+    try {
+      const result = await onSubmit(trimmedEmail, trimmedPassword);
+      if (result && !result.success) {
+        setError(result.error || "Failed to add account.");
+      } else {
+        setError("");
+        onClose();
+      }
+    } catch (err: any) {
+      setError(err?.message || "Something went wrong.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

@@ -7,6 +7,7 @@ import {
 } from "react";
 import api from "../utils/api";
 // import { bulkUpdateEmails } from '../utils/api'; // इसे हटा दें
+import React from 'react';
 
 // 1. Define the type for your context value
 interface GmailContextType {
@@ -18,7 +19,7 @@ interface GmailContextType {
   handleAddAccount: (
     email: string,
     appPassword: string
-  ) => Promise<void>;
+  ) => Promise<{ success: boolean; error?: string }>; // यहाँ type बदल दिया
   fetchCredentials: () => Promise<void>;
   emails: any[]; // Adjust type as needed
   updateEmailStatus: (type : string, emailId: string) => Promise<void>;
@@ -37,6 +38,8 @@ interface GmailContextType {
   searchQuery: string;
   setSearchQuery: (q: string) => void;
   checkAuth: () => Promise<void>;
+  filters: Record<string, string[]>;
+  setFilters: React.Dispatch<React.SetStateAction<Record<string, string[]>>>;
 }
 
 // 2. Create the context with a default value or `null`
@@ -65,6 +68,7 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
   const [folder , setFolder ] = useState("inbox")
   const [counts, setCounts] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<Record<string, string[]>>({});
 
   
   const fetchCredentials = async () => {
@@ -86,16 +90,22 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
     try {
       const response = await api.post("/emailcred", {
         email,
-        password:appPassword,
+        password: appPassword,
       });
       if (response.data && response.data.cred) {
         setEmailCred((prev) => [...(prev || []), response.data.cred]);
         setSelectedAccount(response.data.cred);
       }
-      await fetchCredentials()
-    } catch (error) {
-      console.error("Error adding email account:", error);
-      
+      await fetchCredentials();
+      return { success: true };
+    } catch (error: any) {
+      let msg = "Failed to add account.";
+      if (error?.response?.data?.message) {
+        msg = error.response.data.message;
+      } else if (error?.message) {
+        msg = error.message;
+      }
+      return { success: false, error: msg };
     }
   };
 
@@ -118,6 +128,12 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       if (searchQuery.trim()) {
         url += `&search=${encodeURIComponent(searchQuery.trim())}`;
       }
+      
+      Object.entries(filters).forEach(([cat, vals]) => {
+        vals.forEach(val => {
+          url += `&${encodeURIComponent(cat)}=${encodeURIComponent(val)}`;
+        });
+      });
       const response = await api.get(url);
     
       setEmails(response?.data?.emails);
@@ -169,7 +185,7 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       fetchEmails();
     }
   }
-  , [selectedAccount , currentPage , folder , searchQuery ]);
+  , [selectedAccount , currentPage , folder , searchQuery , filters ]);
   
  
 
@@ -231,6 +247,8 @@ export const GmailProvider = ({ children }: GmailProviderProps) => {
       searchQuery,
       setSearchQuery,
       checkAuth,
+      filters,
+      setFilters,
     }}>
       {children}
     </GmailContext.Provider>
